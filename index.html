@@ -1,0 +1,185 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>PassVigil — Minimal Password Health Checker</title>
+  <style>
+
+    body{font-family:system-ui,Segoe UI,Roboto,Arial; background:#071126; color:#e6eef8; display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0;padding:20px}
+    .card{width:680px;background:rgba(255,255,255,0.02);padding:18px;border-radius:10px;box-shadow:0 10px 30px rgba(0,0,0,0.6)}
+    h1{font-size:18px;margin:0 0 8px}
+    label{font-size:13px;color:#9aa8bf}
+    input{width:100%;padding:10px;border-radius:8px;border:1px solid rgba(255,255,255,0.04);background:transparent;color:inherit;font-size:15px;margin-top:6px}
+    .row{display:flex;gap:12px;margin-top:12px}
+    .col{flex:1}
+    .meter{height:10px;background:rgba(255,255,255,0.03);border-radius:8px;overflow:hidden;margin-top:8px}
+    .meter > i{height:100%;display:block;width:0;transition:width .22s}
+    .muted{color:#93a5bf;font-size:13px}
+    button{background:#60a5fa;border:none;padding:8px 10px;border-radius:8px;cursor:pointer;color:#052337}
+    .suggest{margin-top:10px}
+    .pill{display:inline-block;padding:8px 10px;border-radius:8px;background:rgba(255,255,255,0.03);cursor:pointer;border:1px solid rgba(255,255,255,0.03)}
+    ul{margin:6px 0 0 18px}
+    pre.debug{background:rgba(255,255,255,0.02);padding:8px;border-radius:6px;color:#9aa8bf;margin-top:8px}
+  </style>
+</head>
+<body>
+  <div class="card" role="main" aria-labelledby="title">
+    <h1 id="title">PassVigil — Minimal Password Health Checker</h1>
+    <div class="col">
+      <label for="pwd">Enter password (client-side only)</label>
+      <input id="pwd" type="password" autocomplete="off" placeholder="Type a password..." />
+
+      <div class="meter" aria-hidden="true"><i id="bar"></i></div>
+      <div style="display:flex;align-items:center;gap:10px;margin-top:8px;">
+        <div class="muted">Entropy:</div>
+        <div id="entropy" style="font-weight:600">0 bits</div>
+        <div style="flex:1"></div>
+        <button id="copyBtn" title="Copy suggestion">Copy suggestion</button>
+      </div>
+
+      <div id="reasons" class="muted" style="margin-top:10px">Start typing to see reasons and one suggestion.</div>
+
+      <div class="suggest" id="suggestions"></div>
+
+      
+      <pre id="debug" class="debug" aria-hidden="true" style="display:none"></pre>
+    </div>
+  </div>
+
+<script>
+
+
+const COMMON = ["password","123456","qwerty","admin","welcome","letmein","monkey","iloveyou"];
+
+
+function charClasses(p){
+  return {
+    lower: /[a-z]/.test(p),
+    upper: /[A-Z]/.test(p),
+    digit: /[0-9]/.test(p),
+    symbol: /[^A-Za-z0-9]/.test(p)
+  };
+}
+
+
+function estimateEntropy(p){
+  if (!p) return 0;
+  const cls = charClasses(p);
+  let pool = 0;
+  if (cls.lower) pool += 26;
+  if (cls.upper) pool += 26;
+  if (cls.digit) pool += 10;
+  if (cls.symbol) pool += 32; 
+  if (pool === 0) return 0;
+  return +(p.length * Math.log2(pool)).toFixed(1);
+}
+
+function analyze(p){
+  const reasons = [];
+  if (!p) return ["No password entered."];
+
+  const lower = p.toLowerCase();
+  if (p.length < 8) reasons.push("Too short — 8+ chars recommended.");
+  if (p.length >= 8 && p.length < 12) reasons.push("Consider making it longer (12+ chars ideal).");
+
+  for (const w of COMMON){
+    if (lower === w) { reasons.push("It's an exact common password — very weak."); break; }
+    if (lower.includes(w)) { reasons.push("Contains a common word or pattern ("+w+")."); break; }
+  }
+
+  if (/^(.)\1+$/.test(p)) reasons.push("Same character repeated.");
+  if (/(.)\1\1/.test(p)) reasons.push("Repeating characters detected (e.g., aaa).");
+  if (/(012|1234|2345|3456|4567|5678|6789)/.test(p)) reasons.push("Numeric sequence found (e.g., 1234).");
+
+  const cls = charClasses(p);
+  const classCount = Number(cls.lower)+Number(cls.upper)+Number(cls.digit)+Number(cls.symbol);
+  if (classCount < 2) reasons.push("Not enough character variety — add uppercase, digits or symbols.");
+  if (!cls.symbol) reasons.push("No symbols — adding one or two symbols helps.");
+
+  return reasons;
+}
+
+
+function generateSuggestion(p){
+  if (!p) return "BlueMoon!42"; 
+
+  const m = p.match(/[A-Za-z]{3,}/g);
+  let core = m ? m.sort((a,b)=>b.length-a.length)[0] : p.slice(0,4);
+  
+  core = core.split('').map(ch=>{
+    const l = ch.toLowerCase();
+    if (l==='a') return '@';
+    if (l==='o') return '0';
+    if (l==='i') return '1';
+    if (l==='e') return '3';
+    return ch;
+  }).join('');
+  const seed = Array.from(p).reduce((s,ch)=>s + ch.charCodeAt(0), 0);
+  const symbols = ['!','#','$','%','&','*'];
+  const sym = symbols[seed % symbols.length];
+  const num = (seed % 90) + 10; 
+
+  const mid = Math.ceil(core.length/2);
+  const suggestion = (core.slice(0,mid) + sym + core.slice(mid) + num);
+
+  return suggestion[0].toUpperCase() + suggestion.slice(1);
+}
+
+const pwd = document.getElementById('pwd');
+const bar = document.getElementById('bar');
+const entropyEl = document.getElementById('entropy');
+const reasonsEl = document.getElementById('reasons');
+const suggestionsEl = document.getElementById('suggestions');
+const copyBtn = document.getElementById('copyBtn');
+const debug = document.getElementById('debug');
+
+function update(){
+  const v = pwd.value;
+  const e = estimateEntropy(v);
+  entropyEl.textContent = e + " bits";
+  const pct = Math.max(0, Math.min(100, Math.round(e / 80 * 100)));
+  bar.style.width = pct + "%";
+
+  bar.style.background = pct < 30 ? "linear-gradient(90deg,#ef4444,#fb7185)" : pct < 60 ? "linear-gradient(90deg,#f59e0b,#fbbf24)" : "linear-gradient(90deg,#10b981,#34d399)";
+
+  const reasons = analyze(v);
+  if (!v) reasonsEl.innerHTML = "<span class='muted'>Start typing to see reasons and suggestion.</span>";
+  else reasonsEl.innerHTML = "<strong>Why:</strong><ul>" + reasons.map(r=>`<li>${r}</li>`).join('') + "</ul>";
+
+  
+  suggestionsEl.innerHTML = "";
+  const sug = generateSuggestion(v);
+  const pill = document.createElement('span');
+  pill.className = 'pill';
+  pill.textContent = sug;
+ 
+  pill.onclick = async () => {
+    try {
+      await navigator.clipboard.writeText(sug);
+      pill.textContent = "Copied ✓ — " + sug;
+      setTimeout(()=> pill.textContent = sug, 1100);
+    } catch {
+      alert("Copy failed — select and copy manually: " + sug);
+    }
+  };
+  suggestionsEl.appendChild(pill);
+
+
+  debug.textContent = `len:${v.length} classes:${JSON.stringify(charClasses(v))} entropy:${e}`;
+}
+
+pwd.addEventListener('input', update);
+
+
+copyBtn.addEventListener('click', async () => {
+  const s = suggestionsEl.querySelector('.pill')?.textContent || pwd.value;
+  if (!s) return alert("Nothing to copy.");
+  try { await navigator.clipboard.writeText(s.replace(/^Copied ✓ — /,'')); copyBtn.textContent = "Copied!"; setTimeout(()=>copyBtn.textContent="Copy suggestion",900); }
+  catch { alert("Copy failed — select and copy manually: " + s); }
+});
+
+update();
+</script>
+</body>
+</html>
