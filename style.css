@@ -1,0 +1,104 @@
+body {
+  font-family: system-ui, Segoe UI, Roboto, Arial;
+  background: #071126;
+  color: #e6eef8;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  margin: 0;
+  padding: 20px;
+}
+
+.card {
+  width: 680px;
+  background: rgba(255, 255, 255, 0.02);
+  padding: 18px;
+  border-radius: 10px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6);
+}
+
+h1 {
+  font-size: 18px;
+  margin: 0 0 8px;
+}
+
+label {
+  font-size: 13px;
+  color: #9aa8bf;
+}
+
+input {
+  width: 100%;
+  padding: 10px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.04);
+  background: transparent;
+  color: inherit;
+  font-size: 15px;
+  margin-top: 6px;
+}
+
+.row {
+  display: flex;
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.col {
+  flex: 1;
+}
+
+.meter {
+  height: 10px;
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 8px;
+  overflow: hidden;
+  margin-top: 8px;
+}
+
+.meter > i {
+  height: 100%;
+  display: block;
+  width: 0;
+  transition: width .22s;
+}
+
+.muted {
+  color: #93a5bf;
+  font-size: 13px;
+}
+
+button {
+  background: #60a5fa;
+  border: none;
+  padding: 8px 10px;
+  border-radius: 8px;
+  cursor: pointer;
+  color: #052337;
+}
+
+.suggest {
+  margin-top: 10px;
+}
+
+.pill {
+  display: inline-block;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.03);
+  cursor: pointer;
+  border: 1px solid rgba(255, 255, 255, 0.03);
+}
+
+ul {
+  margin: 6px 0 0 18px;
+}
+
+pre.debug {
+  background: rgba(255, 255, 255, 0.02);
+  padding: 8px;
+  border-radius: 6px;
+  color: #9aa8bf;
+  margin-top: 8px;
+}
